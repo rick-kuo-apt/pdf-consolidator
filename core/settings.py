@@ -3,9 +3,13 @@ Settings management for PDF Consolidator.
 
 Stores settings in a JSON file under the user's app data directory.
 Designed to never store secrets; provides interface for future token storage.
+
+Supports portable mode: if portable_mode.txt exists next to the exe,
+settings/logs are stored in <app_folder>/data/ instead of %APPDATA%.
 """
 import json
 import os
+import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -16,22 +20,85 @@ from .sanitize import get_logger
 # Application name for settings directory
 APP_NAME = "PDFConsolidator"
 
+# Cache for portable mode detection
+_portable_mode_cache: Optional[bool] = None
+_app_base_dir_cache: Optional[Path] = None
+
+
+def get_app_base_dir() -> Path:
+    """
+    Get the application base directory (where the exe or main script is located).
+
+    For frozen apps, this is the directory containing the exe.
+    For development, this is the package directory.
+    """
+    global _app_base_dir_cache
+    if _app_base_dir_cache is not None:
+        return _app_base_dir_cache
+
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        _app_base_dir_cache = Path(sys.executable).parent
+    else:
+        # Running as script - use the package directory's parent
+        _app_base_dir_cache = Path(__file__).parent.parent
+
+    return _app_base_dir_cache
+
+
+def is_portable_mode() -> bool:
+    """
+    Check if the app is running in portable mode.
+
+    Portable mode is enabled if a file named 'portable_mode.txt' exists
+    in the same directory as the executable (or script in dev mode).
+
+    Returns:
+        True if portable mode is enabled
+    """
+    global _portable_mode_cache
+    if _portable_mode_cache is not None:
+        return _portable_mode_cache
+
+    base_dir = get_app_base_dir()
+    portable_marker = base_dir / "portable_mode.txt"
+    _portable_mode_cache = portable_marker.exists()
+
+    return _portable_mode_cache
+
 
 def get_app_data_dir() -> Path:
     """
     Get the application data directory.
 
+    In portable mode: <app_folder>/data/
+    In standard mode: %APPDATA%/PDFConsolidator/ (Windows)
+                      ~/.config/PDFConsolidator/ (Unix/Mac)
+
     Returns:
         Path to app data directory (created if doesn't exist)
     """
-    if os.name == 'nt':  # Windows
-        base = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
-    else:  # Unix/Mac
-        base = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
+    if is_portable_mode():
+        app_dir = get_app_base_dir() / "data"
+    else:
+        if os.name == 'nt':  # Windows
+            base = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+        else:  # Unix/Mac
+            base = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
+        app_dir = base / APP_NAME
 
-    app_dir = base / APP_NAME
     app_dir.mkdir(parents=True, exist_ok=True)
     return app_dir
+
+
+def get_storage_mode() -> str:
+    """
+    Get the current storage mode description.
+
+    Returns:
+        "portable" or "standard"
+    """
+    return "portable" if is_portable_mode() else "standard"
 
 
 def get_settings_path() -> Path:

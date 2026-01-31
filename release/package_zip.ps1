@@ -133,10 +133,65 @@ New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
 Write-Host "  Copying application files..."
 Copy-Item -Recurse "$DistAppDir\*" $PackageDir
 
+# Compute EXE hash early (needed for embedded manifest)
+$ExePath = Join-Path $PackageDir "PDFConsolidator.exe"
+$ExeHash = (Get-FileHash -Path $ExePath -Algorithm SHA256).Hash.ToLower()
+Write-Host "  EXE SHA256: $ExeHash"
+
 # ============================================
-# Step 3: Add documentation
+# Step 3: Create embedded manifest.json (for runtime)
 # ============================================
-Write-Host "Step 3: Adding documentation..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Step 3: Creating embedded manifest.json..." -ForegroundColor Cyan
+
+# Get Python/PyInstaller versions for manifest
+$PythonVersion = "unknown"
+$PyInstallerVersion = "unknown"
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
+$VenvPip = Join-Path $VenvDir "Scripts\pip.exe"
+
+if (Test-Path $VenvPython) {
+    $PythonVersion = & $VenvPython --version 2>&1
+    $PythonVersion = $PythonVersion -replace "Python ", ""
+}
+if (Test-Path $VenvPip) {
+    $pipShow = & $VenvPip show pyinstaller 2>&1
+    if ($pipShow -match "Version:\s*(.+)") {
+        $PyInstallerVersion = $Matches[1].Trim()
+    }
+}
+
+# Create embedded manifest (inside distribution folder)
+$EmbeddedManifest = @{
+    app_name = "PDF Consolidator"
+    version = $AppVersion
+    build_time_iso = $BuildTimeISO
+    build_date = $BuildDate
+    python_version = $PythonVersion
+    pyinstaller_version = $PyInstallerVersion
+    sha256_exe = $ExeHash
+
+    # Security declarations
+    no_network_calls = $true
+    telemetry = "none"
+    offline_only = $true
+
+    # Distribution info
+    distribution_type = "standalone"
+    platform = "windows-x64"
+    requires_admin = $false
+    requires_python = $false
+}
+
+$EmbeddedManifestPath = Join-Path $PackageDir "manifest.json"
+$EmbeddedManifest | ConvertTo-Json -Depth 10 | Set-Content -Path $EmbeddedManifestPath
+Write-Host "  Created: manifest.json (embedded in distribution)"
+
+# ============================================
+# Step 4: Add documentation
+# ============================================
+Write-Host ""
+Write-Host "Step 4: Adding documentation..." -ForegroundColor Cyan
 
 $DocFiles = @(
     @{ Source = "README_USER.txt"; Dest = "README.txt" },
@@ -160,10 +215,10 @@ foreach ($doc in $DocFiles) {
 }
 
 # ============================================
-# Step 4: Create ZIP archive
+# Step 5: Create ZIP archive
 # ============================================
 Write-Host ""
-Write-Host "Step 4: Creating ZIP archive..." -ForegroundColor Cyan
+Write-Host "Step 5: Creating ZIP archive..." -ForegroundColor Cyan
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
@@ -184,10 +239,10 @@ $ZipSizeMB = [math]::Round($ZipSize / 1MB, 2)
 Write-Host "  ZIP created: $ZipFileName ($ZipSizeMB MB)"
 
 # ============================================
-# Step 5: Compute SHA256 hashes
+# Step 6: Compute SHA256 hashes
 # ============================================
 Write-Host ""
-Write-Host "Step 5: Computing SHA256 hashes..." -ForegroundColor Cyan
+Write-Host "Step 6: Computing SHA256 hashes..." -ForegroundColor Cyan
 
 # Hash the ZIP
 $ZipHash = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash.ToLower()
@@ -195,55 +250,31 @@ $ZipHashFile = "$ZipPath.sha256"
 "$ZipHash *$ZipFileName" | Set-Content -Path $ZipHashFile -NoNewline
 Write-Host "  ZIP SHA256: $ZipHash"
 
-# Hash the EXE
-$ExePath = Join-Path $PackageDir "PDFConsolidator.exe"
-$ExeHash = (Get-FileHash -Path $ExePath -Algorithm SHA256).Hash.ToLower()
+# Write EXE hash file (hash computed earlier)
 $ExeHashFile = Join-Path $ReleaseOutputDir "PDFConsolidator.exe.sha256"
 "$ExeHash *PDFConsolidator.exe" | Set-Content -Path $ExeHashFile -NoNewline
-Write-Host "  EXE SHA256: $ExeHash"
+Write-Host "  EXE SHA256: $ExeHash (from earlier)"
 
 # ============================================
-# Step 6: Gather build metadata
+# Step 7: Gather dependencies list
 # ============================================
 Write-Host ""
-Write-Host "Step 6: Gathering build metadata..." -ForegroundColor Cyan
+Write-Host "Step 7: Gathering dependency list..." -ForegroundColor Cyan
 
-# Get Python version
-$PythonVersion = "unknown"
-$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
-if (Test-Path $VenvPython) {
-    $PythonVersion = & $VenvPython --version 2>&1
-    $PythonVersion = $PythonVersion -replace "Python ", ""
-}
-
-# Get PyInstaller version
-$PyInstallerVersion = "unknown"
-$VenvPip = Join-Path $VenvDir "Scripts\pip.exe"
-if (Test-Path $VenvPip) {
-    $pipShow = & $VenvPip show pyinstaller 2>&1
-    if ($pipShow -match "Version:\s*(.+)") {
-        $PyInstallerVersion = $Matches[1].Trim()
-    }
-}
-
-# Get dependencies
 $Dependencies = @()
 if (Test-Path $VenvPip) {
     $freezeOutput = & $VenvPip freeze 2>&1
     $Dependencies = $freezeOutput -split "`n" | Where-Object { $_ -match "==" }
 }
-
-Write-Host "  Python: $PythonVersion"
-Write-Host "  PyInstaller: $PyInstallerVersion"
 Write-Host "  Dependencies: $($Dependencies.Count) packages"
 
 # ============================================
-# Step 7: Create manifest.json
+# Step 8: Create release manifest.json (with ZIP hash)
 # ============================================
 Write-Host ""
-Write-Host "Step 7: Creating manifest.json..." -ForegroundColor Cyan
+Write-Host "Step 8: Creating release manifest.json..." -ForegroundColor Cyan
 
-$Manifest = @{
+$ReleaseManifest = @{
     app_name = "PDF Consolidator"
     version = $AppVersion
     build_time_iso = $BuildTimeISO
@@ -272,14 +303,14 @@ $Manifest = @{
 }
 
 $ManifestPath = Join-Path $ReleaseOutputDir "manifest.json"
-$Manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $ManifestPath
-Write-Host "  Created: manifest.json"
+$ReleaseManifest | ConvertTo-Json -Depth 10 | Set-Content -Path $ManifestPath
+Write-Host "  Created: manifest.json (release folder)"
 
 # ============================================
-# Step 8: Generate RELEASE_NOTES.txt
+# Step 9: Generate RELEASE_NOTES.txt
 # ============================================
 Write-Host ""
-Write-Host "Step 8: Generating RELEASE_NOTES.txt..." -ForegroundColor Cyan
+Write-Host "Step 9: Generating RELEASE_NOTES.txt..." -ForegroundColor Cyan
 
 $ReleaseNotesTemplate = Join-Path $TemplatesDir "RELEASE_NOTES_TEMPLATE.txt"
 $ReleaseNotesPath = Join-Path $ReleaseOutputDir "RELEASE_NOTES.txt"
@@ -349,10 +380,10 @@ Set-Content -Path $ReleaseNotesPath -Value $ReleaseNotes
 Write-Host "  Created: RELEASE_NOTES.txt"
 
 # ============================================
-# Step 9: Copy documentation to release folder
+# Step 10: Copy documentation to release folder
 # ============================================
 Write-Host ""
-Write-Host "Step 9: Copying documentation to release folder..." -ForegroundColor Cyan
+Write-Host "Step 10: Copying documentation to release folder..." -ForegroundColor Cyan
 
 foreach ($doc in $DocFiles) {
     $SourcePath = Join-Path $TemplatesDir $doc.Source
@@ -379,10 +410,10 @@ if (Test-Path $RolloutChecklist) {
 }
 
 # ============================================
-# Step 10: Cleanup staging
+# Step 11: Cleanup staging
 # ============================================
 Write-Host ""
-Write-Host "Step 10: Cleaning up..." -ForegroundColor Cyan
+Write-Host "Step 11: Cleaning up..." -ForegroundColor Cyan
 Remove-Item -Recurse -Force $PackageDir
 Write-Host "  Removed staging folder"
 

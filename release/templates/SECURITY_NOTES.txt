@@ -16,19 +16,24 @@ YOUR DOCUMENTS
   - Original files are NEVER modified
   - Merged output is saved only where YOU specify
   - No temporary copies are sent anywhere
+  - NO PDF files are ever stored by the app
 
 LOCAL STORAGE
 -------------
 The app stores settings and logs locally:
 
-  Settings: %APPDATA%\PDFConsolidator\settings.json
-    - Window size, output preferences
-    - NO passwords are ever saved
+  Default location (Standard Mode):
+    Settings: %APPDATA%\PDFConsolidator\settings.json
+    Logs:     %APPDATA%\PDFConsolidator\app.log
 
-  Logs: %APPDATA%\PDFConsolidator\app.log
-    - Diagnostic information for troubleshooting
-    - Usernames are automatically redacted
-    - NO document contents are logged
+  Portable Mode (if portable_mode.txt exists next to the exe):
+    Settings: <app_folder>\data\settings.json
+    Logs:     <app_folder>\data\app.log
+
+What is stored:
+  - Window size, output preferences
+  - NO passwords are ever saved
+  - NO document contents are stored
 
 ENCRYPTED PDFs
 --------------
@@ -45,6 +50,15 @@ WHAT IS NOT STORED
   - Network or location data
   - Personal information
 
+SUPPORT BUNDLE
+--------------
+The "Export Support Bundle" feature creates a ZIP containing:
+  - Sanitized settings (no secrets)
+  - Sanitized logs (usernames redacted)
+  - NO PDF files
+  - NO passwords
+
 QUESTIONS?
 ----------
 Contact your IT administrator or security team.
+Press F1 in the app for version and diagnostic info.

@@ -1485,27 +1485,60 @@ Usernames are automatically removed from logged file paths.</p>
         dialog.show()
 
     def _show_about_dialog(self):
-        """Show the About / Support dialog."""
+        """Show the About / Support dialog with build provenance."""
+        from ..core.settings import get_storage_mode, get_app_base_dir
+        import json
+
         app_data = get_app_data_dir()
         settings_path = str(app_data / "settings.json")
         logs_path = str(get_log_path())
+        storage_mode = get_storage_mode()
 
-        # Try to get build info (would be set during packaging)
-        build_info = None
+        # Load build provenance from manifest.json if available
+        build_time = None
+        build_fingerprint = None
+        distribution_mode = "source (development)"
+
         try:
-            # In a frozen app, we might have a build timestamp
-            import sys
             if getattr(sys, 'frozen', False):
-                build_info = "Standalone build"
-        except Exception:
-            pass
+                # Running as PyInstaller bundle - look for manifest.json
+                distribution_mode = "PyInstaller (onedir)"
+                base_dir = get_app_base_dir()
+
+                # Try multiple possible locations for manifest.json
+                manifest_paths = [
+                    base_dir / "manifest.json",
+                    base_dir.parent / "manifest.json",
+                ]
+
+                for manifest_path in manifest_paths:
+                    if manifest_path.exists():
+                        with open(manifest_path, 'r', encoding='utf-8') as f:
+                            manifest = json.load(f)
+
+                        # Extract build time
+                        if 'build_time_iso' in manifest:
+                            build_time = manifest['build_time_iso']
+                        elif 'build_date' in manifest:
+                            build_time = manifest['build_date']
+
+                        # Extract fingerprint (first 12 chars of exe hash)
+                        if 'sha256_exe' in manifest:
+                            build_fingerprint = manifest['sha256_exe'][:12]
+
+                        break
+        except Exception as e:
+            logger.debug(f"Could not load manifest.json: {e}")
 
         dialog = AboutDialog(
             self,
             version=self.APP_VERSION,
             settings_path=settings_path,
             logs_path=logs_path,
-            build_info=build_info
+            build_time=build_time,
+            build_fingerprint=build_fingerprint,
+            distribution_mode=distribution_mode,
+            storage_mode=storage_mode
         )
 
         dialog.open_logs_requested.connect(self._open_logs_folder)

@@ -21,11 +21,17 @@ DEPLOYMENT OPTIONS
 2. Network Share
    - Extract to: \\server\share\PDFConsolidator\
    - Users can run directly or copy locally
+   - Note: Some features work better when run locally
 
 3. Software Center / SCCM
    - Deploy as a "Copy Files" application
    - No MSI required
    - Target: User profile or shared location
+
+4. Portable Mode
+   - Create an empty file named "portable_mode.txt" next to the exe
+   - App will store settings/logs in <app_folder>\data\ instead of %APPDATA%
+   - Useful for USB deployment or shared workstations
 
 SYSTEM REQUIREMENTS
 -------------------
@@ -34,6 +40,13 @@ SYSTEM REQUIREMENTS
   - No admin rights required
   - ~80-150 MB disk space
   - No network access required
+
+DEPENDENCIES
+------------
+  - Microsoft Visual C++ Redistributable (usually pre-installed)
+    If users report "VCRUNTIME140.dll not found" or similar:
+    Install from: https://aka.ms/vs/17/release/vc_redist.x64.exe
+    Or deploy via SCCM/Intune as a prerequisite
 
 NETWORK/FIREWALL
 ----------------
@@ -45,40 +58,64 @@ This application makes NO network connections.
 
 FILE SYSTEM LOCATIONS
 ---------------------
-Per-user settings and logs:
+Standard Mode (default):
   %APPDATA%\PDFConsolidator\
     settings.json    - User preferences (JSON, ~1KB)
-    app.log          - Diagnostic log (text, rotated)
+    app.log          - Diagnostic log (text, auto-rotated)
+
+Portable Mode (if portable_mode.txt exists next to exe):
+  <app_folder>\data\
+    settings.json
+    app.log
 
 These locations are:
   - User-writable (no admin needed)
-  - Roaming profile compatible
+  - Roaming profile compatible (standard mode)
   - Safe for folder redirection
 
-CODE SIGNING (RECOMMENDED)
---------------------------
-The distributed executable is NOT code-signed by default.
-Users will see Windows SmartScreen warnings on first run.
+WINDOWS SMARTSCREEN & ZONE BLOCKING
+-----------------------------------
+The executable is NOT code-signed by default.
 
+SmartScreen Warning:
+  Users will see "Windows protected your PC" on first run.
+  Solution: Click "More info" > "Run anyway"
+
+Zone Identifier (Mark of the Web):
+  Files downloaded from the internet or network shares may be blocked.
+  Solution: Right-click exe > Properties > check "Unblock" > Apply
+
+  To unblock via PowerShell:
+    Unblock-File -Path "C:\path\to\PDFConsolidator.exe"
+
+  To unblock entire folder:
+    Get-ChildItem -Path "C:\path\to\folder" -Recurse | Unblock-File
+
+Group Policy Options:
+  - Add to trusted publishers
+  - Configure SmartScreen exceptions
+  - Use AppLocker with hash rules
+
+CODE SIGNING (Recommended)
+--------------------------
 To eliminate SmartScreen warnings:
   1. Obtain a code signing certificate (EV recommended)
   2. Sign PDFConsolidator.exe with signtool:
      signtool sign /tr http://timestamp.digicert.com /td sha256 ^
        /fd sha256 /a PDFConsolidator.exe
   3. Repackage the signed exe
+  4. Update SHA256 hashes in release artifacts
 
-Workaround without signing:
-  - Users click "More info" > "Run anyway"
-  - Or add to trusted publishers via Group Policy
-
-SMARTSCREEN EXPECTATIONS
+ANTIVIRUS CONSIDERATIONS
 ------------------------
-Without code signing, users will see:
-  "Windows protected your PC"
-  "Windows SmartScreen prevented an unrecognized app..."
+PyInstaller executables occasionally trigger false positives.
 
-This is normal for unsigned applications and does not
-indicate malware. The warning appears once per user.
+If flagged:
+  1. Whitelist the application folder
+  2. Submit to AV vendor for analysis
+  3. Use hash-based allowlisting
+
+The manifest.json in the release contains SHA256 hashes for verification.
 
 SECURITY FEATURES
 -----------------
@@ -94,34 +131,42 @@ AUDIT/COMPLIANCE
   - Source code available for review
   - All dependencies are standard Python packages
   - No obfuscation or anti-debugging
-  - Logs available at %APPDATA%\PDFConsolidator\
+  - Logs available for review
+  - manifest.json contains build provenance
 
 TROUBLESHOOTING
 ---------------
 1. App won't start
-   - Check Windows Event Viewer for .NET/runtime errors
-   - Ensure Visual C++ Redistributable is installed
-   - Try running from cmd to see error messages
+   - Check for VCRUNTIME140.dll errors (install VC++ Redist)
+   - Check Windows Event Viewer > Application
+   - Try running from cmd to see error output
+   - Ensure extracted to local path, not network/SharePoint
 
 2. SmartScreen blocks execution
    - Right-click exe > Properties > Unblock
    - Or use Group Policy to trust the publisher
 
-3. Antivirus false positive
-   - PyInstaller executables sometimes trigger AV
-   - Whitelist the application folder
-   - Submit for AV vendor review if needed
+3. Antivirus quarantines
+   - Whitelist the folder
+   - Submit for vendor review
 
 4. Permission errors
    - Ensure %APPDATA% is writable
    - Check folder redirection policies
+   - Try portable mode (create portable_mode.txt)
+
+5. Collect diagnostics
+   - User: Help > About / Support > Export Support Bundle
+   - Bundle contains sanitized logs, no PDFs or passwords
 
 SUPPORT
 -------
 For issues, collect:
-  1. %APPDATA%\PDFConsolidator\app.log
+  1. Support bundle from app (Help > About > Export Support Bundle)
   2. Windows Event Viewer errors
   3. Steps to reproduce
 
-Use the in-app Support Bundle feature (package icon) to
-export sanitized diagnostics.
+The support bundle contains:
+  - Sanitized settings and logs
+  - Build fingerprint for version identification
+  - NO PDF files, NO passwords

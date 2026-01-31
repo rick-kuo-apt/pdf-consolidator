@@ -772,7 +772,7 @@ class SupportBundleDialog(QDialog):
 
 class AboutDialog(QDialog):
     """
-    About / Support dialog showing app info and quick actions.
+    About / Support dialog showing app info, build provenance, and quick actions.
     """
 
     open_logs_requested = Signal()
@@ -785,29 +785,36 @@ class AboutDialog(QDialog):
         version: str,
         settings_path: str,
         logs_path: str,
-        build_info: Optional[str] = None
+        build_time: Optional[str] = None,
+        build_fingerprint: Optional[str] = None,
+        distribution_mode: Optional[str] = None,
+        storage_mode: Optional[str] = None
     ):
         super().__init__(parent)
         self.setWindowTitle("About PDF Consolidator")
-        self.setFixedWidth(480)
-        self._setup_ui(version, settings_path, logs_path, build_info)
+        self.setFixedWidth(500)
 
-    def _setup_ui(
-        self,
-        version: str,
-        settings_path: str,
-        logs_path: str,
-        build_info: Optional[str]
-    ):
+        # Store for copy function
+        self.version = version
+        self.settings_path = settings_path
+        self.logs_path = logs_path
+        self.build_time = build_time or "unknown"
+        self.build_fingerprint = build_fingerprint or "unknown"
+        self.distribution_mode = distribution_mode or "source"
+        self.storage_mode = storage_mode or "standard"
+
+        self._setup_ui()
+
+    def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
 
         # Header
-        header = QLabel(f"<h2>PDF Consolidator</h2>")
+        header = QLabel("<h2>PDF Consolidator</h2>")
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
 
-        version_label = QLabel(f"<b>Version {version}</b>")
+        version_label = QLabel(f"<b>Version {self.version}</b>")
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
 
@@ -818,26 +825,38 @@ class AboutDialog(QDialog):
         )
         desc.setAlignment(Qt.AlignCenter)
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: #555; margin: 8px 0;")
+        desc.setStyleSheet("color: #555; margin: 4px 0;")
         layout.addWidget(desc)
 
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("background-color: #ddd;")
-        layout.addWidget(line)
+        # Build info section
+        build_group = QGroupBox("Build Information")
+        build_layout = QFormLayout(build_group)
+        build_layout.setSpacing(6)
+
+        build_time_label = QLabel(f"<code>{self.build_time}</code>")
+        build_time_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        build_layout.addRow("Build time:", build_time_label)
+
+        fingerprint_label = QLabel(f"<code>{self.build_fingerprint}</code>")
+        fingerprint_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        build_layout.addRow("Fingerprint:", fingerprint_label)
+
+        dist_label = QLabel(f"<code>{self.distribution_mode}</code>")
+        build_layout.addRow("Distribution:", dist_label)
+
+        layout.addWidget(build_group)
 
         # Storage info section
-        storage_group = QGroupBox("Local Storage")
+        storage_group = QGroupBox(f"Local Storage ({self.storage_mode} mode)")
         storage_layout = QFormLayout(storage_group)
-        storage_layout.setSpacing(8)
+        storage_layout.setSpacing(6)
 
-        settings_label = QLabel(f"<code>{settings_path}</code>")
+        settings_label = QLabel(f"<code>{self.settings_path}</code>")
         settings_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         settings_label.setWordWrap(True)
         storage_layout.addRow("Settings:", settings_label)
 
-        logs_label = QLabel(f"<code>{logs_path}</code>")
+        logs_label = QLabel(f"<code>{self.logs_path}</code>")
         logs_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         logs_label.setWordWrap(True)
         storage_layout.addRow("Logs:", logs_label)
@@ -847,18 +866,11 @@ class AboutDialog(QDialog):
         # Privacy note
         privacy = QLabel(
             "<b>Privacy:</b> No telemetry, no network calls. "
-            "Passwords are never saved to disk."
+            "Passwords are never saved."
         )
         privacy.setWordWrap(True)
-        privacy.setStyleSheet("color: #2e7d32; padding: 8px; background: #e8f5e9; border-radius: 4px;")
+        privacy.setStyleSheet("color: #2e7d32; padding: 6px; background: #e8f5e9; border-radius: 4px;")
         layout.addWidget(privacy)
-
-        # Build info (if available)
-        if build_info:
-            build_label = QLabel(f"<small>{build_info}</small>")
-            build_label.setAlignment(Qt.AlignCenter)
-            build_label.setStyleSheet("color: #888;")
-            layout.addWidget(build_label)
 
         # Action buttons
         actions_group = QGroupBox("Support")
@@ -876,14 +888,22 @@ class AboutDialog(QDialog):
 
         actions_layout.addLayout(btn_row1)
 
+        btn_row2 = QHBoxLayout()
+
+        copy_info_btn = QPushButton("Copy Support Info")
+        copy_info_btn.clicked.connect(self._on_copy_support_info)
+        btn_row2.addWidget(copy_info_btn)
+
         bundle_btn = QPushButton("Export Support Bundle...")
         bundle_btn.setStyleSheet("font-weight: bold;")
         bundle_btn.clicked.connect(self._on_export_bundle)
-        actions_layout.addWidget(bundle_btn)
+        btn_row2.addWidget(bundle_btn)
+
+        actions_layout.addLayout(btn_row2)
 
         bundle_note = QLabel(
-            "<small>Creates a ZIP with sanitized logs for troubleshooting. "
-            "No PDFs or passwords included.</small>"
+            "<small>Support bundle contains sanitized logs only. "
+            "No PDFs or passwords.</small>"
         )
         bundle_note.setWordWrap(True)
         bundle_note.setStyleSheet("color: #666;")
@@ -896,6 +916,31 @@ class AboutDialog(QDialog):
         close_btn.setDefault(True)
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+
+    def _get_support_info_text(self) -> str:
+        """Generate support info text for clipboard."""
+        return (
+            f"PDF Consolidator v{self.version}\n"
+            f"Build time: {self.build_time}\n"
+            f"Build fingerprint: {self.build_fingerprint}\n"
+            f"Distribution: {self.distribution_mode}\n"
+            f"Storage mode: {self.storage_mode}\n"
+            f"Settings: {self.settings_path}\n"
+            f"Logs: {self.logs_path}"
+        )
+
+    def _on_copy_support_info(self):
+        """Copy support info to clipboard."""
+        from PySide6.QtWidgets import QApplication
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self._get_support_info_text())
+        # Show brief confirmation
+        QMessageBox.information(
+            self,
+            "Copied",
+            "Support info copied to clipboard.",
+            QMessageBox.Ok
+        )
 
     def _on_open_logs(self):
         self.open_logs_requested.emit()
