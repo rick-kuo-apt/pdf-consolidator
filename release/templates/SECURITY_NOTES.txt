@@ -1,0 +1,50 @@
+PDF Consolidator v{VERSION} - Security & Privacy Notes
+======================================================
+
+OFFLINE OPERATION
+-----------------
+This application operates 100% OFFLINE:
+  - NO network connections are made
+  - NO data is uploaded anywhere
+  - NO telemetry or analytics
+  - NO "phone home" functionality
+  - Works in air-gapped environments
+
+YOUR DOCUMENTS
+--------------
+  - PDFs are processed locally on your computer
+  - Original files are NEVER modified
+  - Merged output is saved only where YOU specify
+  - No temporary copies are sent anywhere
+
+LOCAL STORAGE
+-------------
+The app stores settings and logs locally:
+
+  Settings: %APPDATA%\PDFConsolidator\settings.json
+    - Window size, output preferences
+    - NO passwords are ever saved
+
+  Logs: %APPDATA%\PDFConsolidator\app.log
+    - Diagnostic information for troubleshooting
+    - Usernames are automatically redacted
+    - NO document contents are logged
+
+ENCRYPTED PDFs
+--------------
+If you enter a password for an encrypted PDF:
+  - Password is used in memory only
+  - Password is NEVER saved to disk
+  - Password is NEVER logged
+
+WHAT IS NOT STORED
+------------------
+  - Your PDF file contents
+  - Document metadata from source files
+  - Passwords or credentials
+  - Network or location data
+  - Personal information
+
+QUESTIONS?
+----------
+Contact your IT administrator or security team.

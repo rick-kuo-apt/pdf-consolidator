@@ -39,6 +39,7 @@ from ..core.sanitize import get_logger, sanitize_path_for_log
 from ..core.support_bundle import (
     create_support_bundle, BundleVerificationError
 )
+from ..core.version import __version__, get_full_app_title
 
 from .widgets import (
     DropZone, ProgressDialog, SummaryDialog, PasswordDialog,
@@ -56,7 +57,9 @@ class MergeWorker(QObject):
     """
 
     progress = Signal(float, str, str)  # percent, status, current_file
-    finished = Signal()  # Signal completion (result stored in self.result)
+    # Emit result data as primitives to avoid cross-thread object marshaling issues
+    # (success, merged, skipped, errors, pages, size_bytes, duration, output_path, error_msg)
+    finished = Signal(bool, int, int, int, int, int, float, str, str)
     error = Signal(str)
     password_requested = Signal(str)  # filename
 
@@ -73,7 +76,6 @@ class MergeWorker(QObject):
         self.output_path = output_path
         self.passwords = passwords or {}
         self._pending_password_response = None
-        self.result: Optional[MergeResult] = None  # Store result here
 
     @Slot()
     def run(self):
@@ -82,13 +84,27 @@ class MergeWorker(QObject):
             def progress_callback(p: MergeProgress):
                 self.progress.emit(p.percent_complete, p.status_message, p.current_file)
 
-            self.result = self.service.merge(
+            logger.info("MergeWorker: Starting merge...")
+            result = self.service.merge(
                 self.files,
                 self.output_path,
                 progress_callback=progress_callback,
                 passwords=self.passwords
             )
-            self.finished.emit()
+            logger.info(f"MergeWorker: Merge returned - success={result.success}, merged={result.merged_count}, pages={result.total_pages}")
+            # Emit result data as primitives
+            self.finished.emit(
+                result.success,
+                result.merged_count,
+                result.skipped_count,
+                result.error_count,
+                result.total_pages,
+                result.total_size_bytes,
+                result.duration_seconds,
+                str(result.output_path) if result.output_path else "",
+                result.error_message
+            )
+            logger.info("MergeWorker: Signal emitted")
         except Exception as e:
             logger.exception("Merge worker error")
             self.error.emit(str(e))
@@ -162,11 +178,11 @@ class MainWindow(QMainWindow):
     """
 
     APP_NAME = "PDF Consolidator"
-    APP_VERSION = "1.1.0"
+    APP_VERSION = __version__
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(self.APP_NAME)
+        self.setWindowTitle(get_full_app_title())
         self.queued_files: List[QueuedPDF] = []
         self.merge_thread: Optional[QThread] = None
         self.merge_worker: Optional[MergeWorker] = None
@@ -178,6 +194,7 @@ class MainWindow(QMainWindow):
         self._setup_shortcuts()
         self._load_settings()
         self._connect_signals()
+        self._check_first_run()
 
         logger.info(f"{self.APP_NAME} v{self.APP_VERSION} started")
 
@@ -588,6 +605,83 @@ class MainWindow(QMainWindow):
         self.restrict_output_check.toggled.connect(
             lambda checked: self.manage_dirs_btn.setEnabled(checked)
         )
+
+    def _check_first_run(self):
+        """Show first-run information dialog if this is the first launch."""
+        settings = get_settings()
+
+        # Check if we've shown the first-run dialog before
+        if getattr(settings, 'first_run_shown', False):
+            return
+
+        # Show the first-run information dialog
+        app_data = get_app_data_dir()
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Welcome to PDF Consolidator")
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(
+            "<b>Welcome to PDF Consolidator!</b><br><br>"
+            "This application runs <b>100% offline</b>.<br>"
+            "Your documents are never uploaded anywhere."
+        )
+        msg.setInformativeText(
+            f"<b>Local Storage:</b><br>"
+            f"Settings and logs are stored in:<br>"
+            f"<code>{app_data}</code><br><br>"
+            f"<b>Privacy:</b><br>"
+            f"No telemetry, no network calls, no data collection.<br>"
+            f"Passwords are never saved to disk."
+        )
+        msg.setStandardButtons(QMessageBox.Ok)
+
+        # Add a button to view security notes
+        security_btn = msg.addButton("View Security Notes", QMessageBox.ActionRole)
+
+        msg.exec()
+
+        if msg.clickedButton() == security_btn:
+            self._show_security_notes()
+
+        # Mark first run as shown
+        try:
+            settings_mgr = get_settings_manager()
+            settings_mgr.settings.first_run_shown = True
+            settings_mgr.save()
+        except Exception:
+            pass  # Don't fail if we can't save
+
+    def _show_security_notes(self):
+        """Show security notes dialog."""
+        app_data = get_app_data_dir()
+        notes = f"""
+<h3>Security & Privacy Notes</h3>
+
+<p><b>Offline Operation:</b><br>
+This application makes NO network connections. Your documents are processed
+entirely on your local computer.</p>
+
+<p><b>Local Storage:</b><br>
+Settings: <code>{app_data}\\settings.json</code><br>
+Logs: <code>{app_data}\\app.log</code></p>
+
+<p><b>What is NOT stored:</b></p>
+<ul>
+<li>Your PDF file contents</li>
+<li>Passwords or credentials</li>
+<li>Personal information</li>
+<li>Network or location data</li>
+</ul>
+
+<p><b>Sanitized Logging:</b><br>
+Usernames are automatically removed from logged file paths.</p>
+"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Security Notes")
+        msg.setIcon(QMessageBox.Information)
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(notes)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec()
 
     def _load_settings(self):
         """Load saved settings."""
@@ -1203,13 +1297,24 @@ class MainWindow(QMainWindow):
         self.merge_worker.progress.connect(self._on_merge_progress)
         self.merge_worker.finished.connect(self._on_merge_finished)
         self.merge_worker.error.connect(self._on_merge_error)
+        # Note: Don't connect deleteLater to finished - we'll clean up manually
+        # after accessing the result in _on_merge_finished
         self.merge_worker.finished.connect(self.merge_thread.quit)
-        self.merge_worker.finished.connect(self.merge_worker.deleteLater)
-        self.merge_thread.finished.connect(self.merge_thread.deleteLater)
+        self.merge_thread.finished.connect(self._cleanup_merge_thread)
 
         # Start merge
         self.merge_thread.start()
         self.progress_dialog.show()
+
+    @Slot()
+    def _cleanup_merge_thread(self):
+        """Clean up merge thread and worker after completion."""
+        if hasattr(self, 'merge_worker') and self.merge_worker:
+            self.merge_worker.deleteLater()
+            self.merge_worker = None
+        if hasattr(self, 'merge_thread') and self.merge_thread:
+            self.merge_thread.deleteLater()
+            self.merge_thread = None
 
     @Slot()
     def _on_merge_cancelled(self):
@@ -1224,50 +1329,57 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'progress_dialog'):
             self.progress_dialog.update_progress(percent, status, current_file)
 
-    @Slot()
-    def _on_merge_finished(self):
+    @Slot(bool, int, int, int, int, int, float, str, str)
+    def _on_merge_finished(
+        self,
+        success: bool,
+        merged_count: int,
+        skipped_count: int,
+        error_count: int,
+        total_pages: int,
+        total_size_bytes: int,
+        duration_seconds: float,
+        output_path_str: str,
+        error_message: str
+    ):
         """Handle merge completion."""
+        logger.info(f"_on_merge_finished called: success={success}, merged={merged_count}, pages={total_pages}, path={output_path_str}")
         if hasattr(self, 'progress_dialog'):
             self.progress_dialog.close()
-
-        # Get result from worker (stored there to avoid signal marshaling issues)
-        result = self.merge_worker.result if self.merge_worker else None
-        if result is None:
-            QMessageBox.critical(self, "Error", "Merge completed but result is unavailable.")
-            return
 
         # Refresh table with updated statuses
         self._refresh_table()
         self._update_status()
 
         # Show summary dialog
-        output_size = f"{result.total_size_bytes / (1024*1024):.2f} MB"
-        duration = f"{result.duration_seconds:.1f}s"
+        output_size = f"{total_size_bytes / (1024*1024):.2f} MB"
+        duration = f"{duration_seconds:.1f}s"
+        output_path = Path(output_path_str) if output_path_str else None
 
         dialog = SummaryDialog(
             self,
-            success=result.success,
-            merged_count=result.merged_count,
-            skipped_count=result.skipped_count,
-            error_count=result.error_count,
-            total_pages=result.total_pages,
-            output_path=str(result.output_path) if result.output_path else "",
+            success=success,
+            merged_count=merged_count,
+            skipped_count=skipped_count,
+            error_count=error_count,
+            total_pages=total_pages,
+            output_path=output_path_str,
             output_size=output_size,
             duration=duration
         )
 
         dialog.open_folder_requested.connect(
-            lambda: self._open_folder(result.output_path.parent if result.output_path else None)
+            lambda: self._open_folder(output_path.parent if output_path else None)
         )
         dialog.copy_path_requested.connect(
-            lambda: self._copy_to_clipboard(str(result.output_path) if result.output_path else "")
+            lambda: self._copy_to_clipboard(output_path_str)
         )
 
         dialog.exec()
 
         # Open folder if requested
-        if result.success and self.open_folder_check.isChecked() and result.output_path:
-            self._open_folder(result.output_path.parent)
+        if success and self.open_folder_check.isChecked() and output_path:
+            self._open_folder(output_path.parent)
 
     @Slot(str)
     def _on_merge_error(self, error_message: str):

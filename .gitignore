@@ -41,6 +41,11 @@ desktop.ini
 # PyInstaller
 *.manifest
 *.spec
+!release/pyinstaller.spec
+
+# Build outputs
+.venv_build/
+releases/
 
 # Logs and local data
 *.log

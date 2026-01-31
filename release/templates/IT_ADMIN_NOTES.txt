@@ -1,0 +1,127 @@
+PDF Consolidator v{VERSION} - IT Administrator Notes
+====================================================
+Generated: {DATE}
+
+OVERVIEW
+--------
+PDF Consolidator is a standalone Windows desktop application for
+merging PDF files. It requires no installation, admin rights, or
+network access.
+
+DEPLOYMENT OPTIONS
+------------------
+1. ZIP Distribution (Recommended)
+   - Share PDFConsolidator_v{VERSION}_Windows.zip via:
+     - Network share
+     - SharePoint/OneDrive
+     - Email attachment
+     - Software Center/SCCM
+   - Users extract and run - no installation needed
+
+2. Network Share
+   - Extract to: \\server\share\PDFConsolidator\
+   - Users can run directly or copy locally
+
+3. Software Center / SCCM
+   - Deploy as a "Copy Files" application
+   - No MSI required
+   - Target: User profile or shared location
+
+SYSTEM REQUIREMENTS
+-------------------
+  - Windows 10/11 (64-bit)
+  - No Python installation required
+  - No admin rights required
+  - ~80-150 MB disk space
+  - No network access required
+
+NETWORK/FIREWALL
+----------------
+This application makes NO network connections.
+  - No firewall rules needed
+  - No proxy configuration needed
+  - Safe for air-gapped environments
+  - No telemetry or update checks
+
+FILE SYSTEM LOCATIONS
+---------------------
+Per-user settings and logs:
+  %APPDATA%\PDFConsolidator\
+    settings.json    - User preferences (JSON, ~1KB)
+    app.log          - Diagnostic log (text, rotated)
+
+These locations are:
+  - User-writable (no admin needed)
+  - Roaming profile compatible
+  - Safe for folder redirection
+
+CODE SIGNING (RECOMMENDED)
+--------------------------
+The distributed executable is NOT code-signed by default.
+Users will see Windows SmartScreen warnings on first run.
+
+To eliminate SmartScreen warnings:
+  1. Obtain a code signing certificate (EV recommended)
+  2. Sign PDFConsolidator.exe with signtool:
+     signtool sign /tr http://timestamp.digicert.com /td sha256 ^
+       /fd sha256 /a PDFConsolidator.exe
+  3. Repackage the signed exe
+
+Workaround without signing:
+  - Users click "More info" > "Run anyway"
+  - Or add to trusted publishers via Group Policy
+
+SMARTSCREEN EXPECTATIONS
+------------------------
+Without code signing, users will see:
+  "Windows protected your PC"
+  "Windows SmartScreen prevented an unrecognized app..."
+
+This is normal for unsigned applications and does not
+indicate malware. The warning appears once per user.
+
+SECURITY FEATURES
+-----------------
+  - Offline only - no network calls
+  - No telemetry or analytics
+  - Sanitized logs (usernames redacted)
+  - No secrets stored (passwords never saved)
+  - Atomic file writes (no partial outputs)
+  - Optional output directory restrictions
+
+AUDIT/COMPLIANCE
+----------------
+  - Source code available for review
+  - All dependencies are standard Python packages
+  - No obfuscation or anti-debugging
+  - Logs available at %APPDATA%\PDFConsolidator\
+
+TROUBLESHOOTING
+---------------
+1. App won't start
+   - Check Windows Event Viewer for .NET/runtime errors
+   - Ensure Visual C++ Redistributable is installed
+   - Try running from cmd to see error messages
+
+2. SmartScreen blocks execution
+   - Right-click exe > Properties > Unblock
+   - Or use Group Policy to trust the publisher
+
+3. Antivirus false positive
+   - PyInstaller executables sometimes trigger AV
+   - Whitelist the application folder
+   - Submit for AV vendor review if needed
+
+4. Permission errors
+   - Ensure %APPDATA% is writable
+   - Check folder redirection policies
+
+SUPPORT
+-------
+For issues, collect:
+  1. %APPDATA%\PDFConsolidator\app.log
+  2. Windows Event Viewer errors
+  3. Steps to reproduce
+
+Use the in-app Support Bundle feature (package icon) to
+export sanitized diagnostics.

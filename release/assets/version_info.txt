@@ -1,0 +1,48 @@
+# UTF-8
+#
+# Windows version info file for PDF Consolidator
+# This file is used by PyInstaller to embed version metadata in the exe.
+#
+# Update the version numbers below when releasing a new version.
+# Keep in sync with core/version.py
+
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    # File version (major, minor, patch, build)
+    filevers=(1, 1, 0, 0),
+    # Product version (major, minor, patch, build)
+    prodvers=(1, 1, 0, 0),
+    # Contains a bitmask that specifies the valid bits in fileflags
+    mask=0x3f,
+    # File flags (0x0 = release, 0x1 = debug)
+    flags=0x0,
+    # Operating system (0x40004 = Windows NT)
+    OS=0x40004,
+    # File type (0x1 = application)
+    fileType=0x1,
+    # File subtype (0x0 for exe)
+    subtype=0x0,
+    # Creation date/time (usually left as 0)
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          u'040904B0',  # US English, Unicode
+          [
+            StringStruct(u'CompanyName', u'Your Organization'),
+            StringStruct(u'FileDescription', u'PDF Consolidator - Merge PDF Files'),
+            StringStruct(u'FileVersion', u'1.1.0'),
+            StringStruct(u'InternalName', u'PDFConsolidator'),
+            StringStruct(u'LegalCopyright', u'Copyright (c) 2024-2026 Your Organization'),
+            StringStruct(u'OriginalFilename', u'PDFConsolidator.exe'),
+            StringStruct(u'ProductName', u'PDF Consolidator'),
+            StringStruct(u'ProductVersion', u'1.1.0'),
+          ]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])  # US English, Unicode
+  ]
+)

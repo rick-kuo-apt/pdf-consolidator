@@ -3,6 +3,7 @@ PDF merging service for PDF Consolidator.
 
 Handles the core merge logic without any Qt dependencies for testability.
 """
+import os
 import shutil
 import tempfile
 import time
@@ -322,6 +323,8 @@ class MergeService:
             # Write to temp file first
             temp_fd, temp_path = tempfile.mkstemp(suffix='.pdf')
             temp_path = Path(temp_path)
+            # Close the file descriptor immediately - we'll reopen with open()
+            os.close(temp_fd)
 
             try:
                 with open(temp_path, 'wb') as f:

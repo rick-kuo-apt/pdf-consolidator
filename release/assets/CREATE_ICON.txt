@@ -1,0 +1,49 @@
+Creating app.ico for PDF Consolidator
+======================================
+
+The application icon (app.ico) should be placed in this folder.
+
+REQUIREMENTS
+------------
+Windows .ico files should contain multiple sizes:
+  - 16x16 pixels
+  - 32x32 pixels
+  - 48x48 pixels
+  - 256x256 pixels (for high-DPI displays)
+
+CREATING AN ICON
+----------------
+
+Option 1: Online Converter
+  1. Create or find a 256x256 PNG image
+  2. Use an online converter like:
+     - https://convertico.com/
+     - https://icoconvert.com/
+  3. Upload your PNG and download the .ico
+  4. Save as "app.ico" in this folder
+
+Option 2: GIMP (Free)
+  1. Open/create your image in GIMP
+  2. Scale to 256x256 pixels
+  3. File > Export As > app.ico
+  4. Select sizes: 16, 32, 48, 256
+
+Option 3: ImageMagick (Command Line)
+  convert logo.png -define icon:auto-resize=256,48,32,16 app.ico
+
+Option 4: Python (pillow)
+  from PIL import Image
+  img = Image.open('logo.png')
+  img.save('app.ico', sizes=[(16,16), (32,32), (48,48), (256,256)])
+
+SUGGESTED DESIGN
+----------------
+  - Simple, recognizable at small sizes
+  - PDF-related imagery (document icon, merge arrows)
+  - Professional colors (blue, gray)
+  - Avoid fine details that disappear at 16x16
+
+PLACEHOLDER
+-----------
+If no icon is provided, the build will proceed without one.
+Windows will use a default executable icon.

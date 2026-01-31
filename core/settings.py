@@ -100,6 +100,9 @@ class AppSettings:
     recent_output_directories: List[str] = field(default_factory=list)
     max_recent_directories: int = 5
 
+    # First run tracking
+    first_run_shown: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)

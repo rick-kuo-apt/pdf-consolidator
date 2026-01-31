@@ -284,6 +284,88 @@ Future version will include SharePoint/OneDrive integration via Microsoft Graph 
      - macOS: Keychain
      - Linux: Secret Service API
 
+## Distribution to Colleagues
+
+### Quick Start (For Developers)
+
+To create a distributable ZIP file:
+
+```powershell
+# From the pdf_consolidator directory
+cd release
+.\package_zip.ps1
+```
+
+This creates `releases/PDFConsolidator_vX.Y.Z_Windows.zip` ready for distribution.
+
+### Mode A: Standalone Executable (Recommended)
+
+**What colleagues receive:**
+- Single ZIP file (~80-150 MB)
+- No Python installation required
+- No admin rights required
+
+**How to distribute:**
+1. Run `release\package_zip.bat` (or `.ps1`)
+2. Share the generated ZIP via:
+   - Network share
+   - SharePoint/OneDrive
+   - Email
+   - Software Center
+
+**Colleague instructions:**
+1. Extract ZIP anywhere (Desktop, Documents, etc.)
+2. Double-click `PDFConsolidator.exe`
+3. Done!
+
+### Mode B: Source Distribution (Fallback)
+
+If PyInstaller is blocked, use the source distribution:
+
+**Requirements:** Python 3.10+ installed
+
+**Files to distribute:**
+- `pdf_consolidator/` folder
+- `requirements.txt`
+- `release/fallback/run.bat`
+
+**Colleague instructions:**
+1. Extract ZIP anywhere
+2. Double-click `run.bat`
+3. First run installs dependencies automatically
+
+### SmartScreen Warning
+
+The standalone executable is not code-signed, so Windows will show:
+> "Windows protected your PC"
+
+**For users:** Click "More info" → "Run anyway"
+
+**For IT:** See `IT_ADMIN_NOTES.txt` for code signing recommendations.
+
+### Build Scripts Reference
+
+| Script | Purpose |
+|--------|---------|
+| `release/build_windows.ps1` | Build standalone exe |
+| `release/build_windows.bat` | Wrapper for double-click |
+| `release/package_zip.ps1` | Create distribution ZIP |
+| `release/package_zip.bat` | Wrapper for double-click |
+| `release/fallback/run.bat` | Source distribution launcher |
+
+### Versioning
+
+Version is defined in `core/version.py`. Update this file before building a new release:
+
+```python
+__version__ = "1.2.0"  # Update this
+```
+
+The version automatically propagates to:
+- Window title bar
+- ZIP filename
+- Windows exe properties
+
 ## License
 
 MIT License - Free for personal and commercial use.
