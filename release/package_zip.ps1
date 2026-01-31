@@ -155,8 +155,8 @@ if (Test-Path $VenvPython) {
     $PythonVersion = $PythonVersion -replace "Python ", ""
 }
 if (Test-Path $VenvPip) {
-    $pipShow = & $VenvPip show pyinstaller 2>&1
-    if ($pipShow -match "Version:\s*(.+)") {
+    $pipShow = & $VenvPip show pyinstaller 2>&1 | Out-String
+    if ($pipShow -match "Version:\s*([^\r\n]+)") {
         $PyInstallerVersion = $Matches[1].Trim()
     }
 }
