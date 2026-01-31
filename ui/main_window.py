@@ -44,7 +44,7 @@ from ..core.version import __version__, get_full_app_title
 from .widgets import (
     DropZone, ProgressDialog, SummaryDialog, PasswordDialog,
     LogViewerDialog, DuplicateDialog, OutputConflictDialog,
-    AllowedDirectoriesDialog, SupportBundleDialog
+    AllowedDirectoriesDialog, SupportBundleDialog, AboutDialog
 )
 
 
@@ -200,6 +200,9 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         """Set up the user interface."""
+        # Menu bar
+        self._setup_menu_bar()
+
         # Central widget
         central = QWidget()
         self.setCentralWidget(central)
@@ -241,6 +244,55 @@ class MainWindow(QMainWindow):
 
         # Apply styling
         self._apply_styles()
+
+    def _setup_menu_bar(self):
+        """Set up the menu bar."""
+        menubar = self.menuBar()
+
+        # File menu
+        file_menu = menubar.addMenu("&File")
+
+        add_files_action = QAction("&Add Files...", self)
+        add_files_action.setShortcut("Ctrl+O")
+        add_files_action.triggered.connect(self._on_add_files)
+        file_menu.addAction(add_files_action)
+
+        add_folder_action = QAction("Add &Folder...", self)
+        add_folder_action.setShortcut("Ctrl+Shift+O")
+        add_folder_action.triggered.connect(self._on_add_folder)
+        file_menu.addAction(add_folder_action)
+
+        file_menu.addSeparator()
+
+        merge_action = QAction("&Merge PDFs", self)
+        merge_action.setShortcut("Ctrl+M")
+        merge_action.triggered.connect(self._on_merge)
+        file_menu.addAction(merge_action)
+
+        file_menu.addSeparator()
+
+        exit_action = QAction("E&xit", self)
+        exit_action.setShortcut("Alt+F4")
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+
+        # Help menu
+        help_menu = menubar.addMenu("&Help")
+
+        about_action = QAction("&About / Support...", self)
+        about_action.setShortcut("F1")
+        about_action.triggered.connect(self._show_about_dialog)
+        help_menu.addAction(about_action)
+
+        view_logs_action = QAction("View &Logs...", self)
+        view_logs_action.triggered.connect(self._show_logs)
+        help_menu.addAction(view_logs_action)
+
+        help_menu.addSeparator()
+
+        security_notes_action = QAction("&Security Notes...", self)
+        security_notes_action.triggered.connect(self._show_security_notes)
+        help_menu.addAction(security_notes_action)
 
     def _setup_shortcuts(self):
         """Set up keyboard shortcuts."""
@@ -1431,3 +1483,44 @@ Usernames are automatically removed from logged file paths.</p>
 
         dialog = LogViewerDialog(self, log_content)
         dialog.show()
+
+    def _show_about_dialog(self):
+        """Show the About / Support dialog."""
+        app_data = get_app_data_dir()
+        settings_path = str(app_data / "settings.json")
+        logs_path = str(get_log_path())
+
+        # Try to get build info (would be set during packaging)
+        build_info = None
+        try:
+            # In a frozen app, we might have a build timestamp
+            import sys
+            if getattr(sys, 'frozen', False):
+                build_info = "Standalone build"
+        except Exception:
+            pass
+
+        dialog = AboutDialog(
+            self,
+            version=self.APP_VERSION,
+            settings_path=settings_path,
+            logs_path=logs_path,
+            build_info=build_info
+        )
+
+        dialog.open_logs_requested.connect(self._open_logs_folder)
+        dialog.open_settings_requested.connect(self._open_settings_folder)
+        dialog.export_bundle_requested.connect(self._export_support_bundle)
+
+        dialog.exec()
+
+    def _open_logs_folder(self):
+        """Open the logs folder in file explorer."""
+        log_path = get_log_path()
+        folder = log_path.parent
+        self._open_folder(folder)
+
+    def _open_settings_folder(self):
+        """Open the settings folder in file explorer."""
+        app_data = get_app_data_dir()
+        self._open_folder(app_data)

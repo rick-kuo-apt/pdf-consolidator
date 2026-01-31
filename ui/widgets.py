@@ -768,3 +768,141 @@ class SupportBundleDialog(QDialog):
         button_layout.addWidget(export_btn)
 
         layout.addLayout(button_layout)
+
+
+class AboutDialog(QDialog):
+    """
+    About / Support dialog showing app info and quick actions.
+    """
+
+    open_logs_requested = Signal()
+    open_settings_requested = Signal()
+    export_bundle_requested = Signal()
+
+    def __init__(
+        self,
+        parent: Optional[QWidget],
+        version: str,
+        settings_path: str,
+        logs_path: str,
+        build_info: Optional[str] = None
+    ):
+        super().__init__(parent)
+        self.setWindowTitle("About PDF Consolidator")
+        self.setFixedWidth(480)
+        self._setup_ui(version, settings_path, logs_path, build_info)
+
+    def _setup_ui(
+        self,
+        version: str,
+        settings_path: str,
+        logs_path: str,
+        build_info: Optional[str]
+    ):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(16)
+
+        # Header
+        header = QLabel(f"<h2>PDF Consolidator</h2>")
+        header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(header)
+
+        version_label = QLabel(f"<b>Version {version}</b>")
+        version_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(version_label)
+
+        # Description
+        desc = QLabel(
+            "Merge multiple PDF files into a single document.\n"
+            "100% offline - no data is uploaded anywhere."
+        )
+        desc.setAlignment(Qt.AlignCenter)
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #555; margin: 8px 0;")
+        layout.addWidget(desc)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("background-color: #ddd;")
+        layout.addWidget(line)
+
+        # Storage info section
+        storage_group = QGroupBox("Local Storage")
+        storage_layout = QFormLayout(storage_group)
+        storage_layout.setSpacing(8)
+
+        settings_label = QLabel(f"<code>{settings_path}</code>")
+        settings_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        settings_label.setWordWrap(True)
+        storage_layout.addRow("Settings:", settings_label)
+
+        logs_label = QLabel(f"<code>{logs_path}</code>")
+        logs_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        logs_label.setWordWrap(True)
+        storage_layout.addRow("Logs:", logs_label)
+
+        layout.addWidget(storage_group)
+
+        # Privacy note
+        privacy = QLabel(
+            "<b>Privacy:</b> No telemetry, no network calls. "
+            "Passwords are never saved to disk."
+        )
+        privacy.setWordWrap(True)
+        privacy.setStyleSheet("color: #2e7d32; padding: 8px; background: #e8f5e9; border-radius: 4px;")
+        layout.addWidget(privacy)
+
+        # Build info (if available)
+        if build_info:
+            build_label = QLabel(f"<small>{build_info}</small>")
+            build_label.setAlignment(Qt.AlignCenter)
+            build_label.setStyleSheet("color: #888;")
+            layout.addWidget(build_label)
+
+        # Action buttons
+        actions_group = QGroupBox("Support")
+        actions_layout = QVBoxLayout(actions_group)
+
+        btn_row1 = QHBoxLayout()
+
+        logs_btn = QPushButton("Open Logs Folder")
+        logs_btn.clicked.connect(self._on_open_logs)
+        btn_row1.addWidget(logs_btn)
+
+        settings_btn = QPushButton("Open Settings Folder")
+        settings_btn.clicked.connect(self._on_open_settings)
+        btn_row1.addWidget(settings_btn)
+
+        actions_layout.addLayout(btn_row1)
+
+        bundle_btn = QPushButton("Export Support Bundle...")
+        bundle_btn.setStyleSheet("font-weight: bold;")
+        bundle_btn.clicked.connect(self._on_export_bundle)
+        actions_layout.addWidget(bundle_btn)
+
+        bundle_note = QLabel(
+            "<small>Creates a ZIP with sanitized logs for troubleshooting. "
+            "No PDFs or passwords included.</small>"
+        )
+        bundle_note.setWordWrap(True)
+        bundle_note.setStyleSheet("color: #666;")
+        actions_layout.addWidget(bundle_note)
+
+        layout.addWidget(actions_group)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.setDefault(True)
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+
+    def _on_open_logs(self):
+        self.open_logs_requested.emit()
+
+    def _on_open_settings(self):
+        self.open_settings_requested.emit()
+
+    def _on_export_bundle(self):
+        self.export_bundle_requested.emit()
+        self.accept()

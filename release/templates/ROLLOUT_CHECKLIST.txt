@@ -1,0 +1,129 @@
+PDF Consolidator v{VERSION} - Internal Rollout Checklist
+========================================================
+Release Date: {DATE}
+
+Use this checklist before sharing with colleagues.
+
+PRE-RELEASE VERIFICATION
+------------------------
+[ ] 1. Smoke Test on Clean Machine
+    - Copy ZIP to a machine WITHOUT Python installed
+    - Extract and run PDFConsolidator.exe
+    - Verify app launches (SmartScreen warning is expected)
+    - Add 2-3 PDFs and merge
+    - Verify output file is created correctly
+
+[ ] 2. Windows Defender Scan
+    - Right-click the ZIP > "Scan with Microsoft Defender"
+    - Verify no threats detected
+    - Note: PyInstaller apps occasionally trigger false positives
+      If flagged, submit to Microsoft for analysis
+
+[ ] 3. Verify Integrity Hashes
+    PowerShell command:
+    Get-FileHash -Algorithm SHA256 PDFConsolidator_v{VERSION}_Windows.zip
+
+    Expected: {SHA256_ZIP}
+
+[ ] 4. Review Documentation
+    - Open RELEASE_NOTES.txt - verify version and hashes
+    - Open README_USER.txt - verify instructions are clear
+    - Open SECURITY_NOTES.txt - verify accurate
+
+CODE SIGNING (Recommended)
+--------------------------
+[ ] 5. Sign the Executable (if certificate available)
+    signtool sign /tr http://timestamp.digicert.com /td sha256 ^
+      /fd sha256 /a PDFConsolidator.exe
+
+    After signing:
+    - Re-package the ZIP with signed exe
+    - Re-compute hashes
+    - Update RELEASE_NOTES.txt with new hashes
+
+DISTRIBUTION
+------------
+[ ] 6. Upload to SharePoint/Teams
+    Recommended location:
+    - Team SharePoint > Documents > Software > PDFConsolidator
+    - Or Teams channel > Files tab
+
+    Upload these files:
+    - PDFConsolidator_v{VERSION}_Windows.zip
+    - RELEASE_NOTES.txt (for quick reference)
+
+[ ] 7. Set Permissions
+    - Ensure target users have read access
+    - Consider "View only" to prevent accidental deletion
+
+ANNOUNCEMENT
+------------
+[ ] 8. Send Announcement Email/Teams Message
+
+    Copy/paste template below:
+    ----------------------------------------
+    Subject: PDF Consolidator v{VERSION} Available
+
+    Hi team,
+
+    PDF Consolidator v{VERSION} is now available for download.
+
+    DOWNLOAD: [Insert SharePoint link here]
+
+    QUICK START:
+    1. Download the ZIP file
+    2. Extract to your Desktop or Documents folder
+       (Important: Extract locally, not to a network path)
+    3. Double-click PDFConsolidator.exe
+    4. First run: Click "More info" > "Run anyway" if SmartScreen appears
+
+    WHAT IT DOES:
+    - Merges multiple PDF files into one
+    - Drag & drop interface
+    - Works 100% offline - no data leaves your computer
+
+    QUESTIONS?
+    See the README.txt inside the ZIP, or reply to this message.
+
+    Thanks,
+    [Your name]
+    ----------------------------------------
+
+POST-RELEASE
+------------
+[ ] 9. Monitor for Issues
+    - Check for user feedback in first 24-48 hours
+    - Common issues:
+      a) SmartScreen blocks - remind users to click "More info"
+      b) Antivirus quarantine - whitelist the folder
+      c) Network path issues - must extract locally
+
+[ ] 10. Archive Release
+    - Keep a copy of the release folder
+    - Note any issues for next release
+
+TROUBLESHOOTING SUPPORT
+-----------------------
+If users report issues:
+
+1. Ask them to export a support bundle:
+   - In app: Help > About / Support > Export Support Bundle
+
+2. Have them share the bundle ZIP (contains NO PDFs or passwords)
+
+3. Check the app.log inside for error messages
+
+ROLLBACK PLAN
+-------------
+If critical issues found:
+1. Remove/hide the SharePoint file
+2. Notify users via same channel
+3. Investigate and fix
+4. Re-release with incremented version
+
+NOTES
+-----
+- This release is NOT code-signed (SmartScreen warning expected)
+- App stores data in: %APPDATA%\PDFConsolidator\
+- No admin rights required to run
+- No network access required (fully offline)

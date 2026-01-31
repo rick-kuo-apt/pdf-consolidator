@@ -288,7 +288,7 @@ Future version will include SharePoint/OneDrive integration via Microsoft Graph 
 
 ### Quick Start (For Developers)
 
-To create a distributable ZIP file:
+To create a publish-ready release:
 
 ```powershell
 # From the pdf_consolidator directory
@@ -296,7 +296,62 @@ cd release
 .\package_zip.ps1
 ```
 
-This creates `releases/PDFConsolidator_vX.Y.Z_Windows.zip` ready for distribution.
+This creates a complete release folder at `releases/PDFConsolidator_vX.Y.Z/`:
+
+```
+releases/PDFConsolidator_v1.1.0/
+├── PDFConsolidator_v1.1.0_Windows.zip      # Distribution ZIP
+├── PDFConsolidator_v1.1.0_Windows.zip.sha256  # Hash for verification
+├── PDFConsolidator.exe.sha256              # EXE hash
+├── RELEASE_NOTES.txt                       # Version info + hashes
+├── manifest.json                           # Build metadata (machine-readable)
+├── README_USER.txt                         # User instructions
+├── SECURITY_NOTES.txt                      # Privacy documentation
+├── IT_ADMIN_NOTES.txt                      # IT deployment guide
+└── ROLLOUT_CHECKLIST.txt                   # Pre-release checklist
+```
+
+### How to Share with Colleagues
+
+**Step 1: Build the release**
+```powershell
+cd release
+.\package_zip.ps1
+```
+
+**Step 2: Verify the build**
+- Follow `ROLLOUT_CHECKLIST.txt` in the release folder
+- Test on a machine without Python installed
+- Verify SHA256 hashes match
+
+**Step 3: Upload to SharePoint/Teams**
+- Upload `PDFConsolidator_vX.Y.Z_Windows.zip`
+- Optionally include `RELEASE_NOTES.txt` for quick reference
+
+**Step 4: Send announcement** (template in ROLLOUT_CHECKLIST.txt)
+
+### Colleague Instructions (Copy/Paste Ready)
+
+```
+PDF Consolidator - Quick Start
+==============================
+
+1. Download: [Insert SharePoint link]
+
+2. Extract the ZIP to a LOCAL folder:
+   - Desktop, Documents, or Downloads
+   - NOT directly from a network path
+
+3. Double-click PDFConsolidator.exe
+
+4. First run: Windows may show a security warning
+   Click "More info" → "Run anyway"
+   (This is normal for apps not purchased from Microsoft)
+
+5. Drag PDF files onto the window and click "Merge PDFs"
+
+Questions? Reply to this message or see README.txt in the ZIP.
+```
 
 ### Mode A: Standalone Executable (Recommended)
 
@@ -304,23 +359,13 @@ This creates `releases/PDFConsolidator_vX.Y.Z_Windows.zip` ready for distributio
 - Single ZIP file (~80-150 MB)
 - No Python installation required
 - No admin rights required
+- Works 100% offline
 
-**How to distribute:**
-1. Run `release\package_zip.bat` (or `.ps1`)
-2. Share the generated ZIP via:
-   - Network share
-   - SharePoint/OneDrive
-   - Email
-   - Software Center
-
-**Colleague instructions:**
-1. Extract ZIP anywhere (Desktop, Documents, etc.)
-2. Double-click `PDFConsolidator.exe`
-3. Done!
+**Important:** Users must extract the ZIP to a local folder, not run directly from a network path or SharePoint-synced folder.
 
 ### Mode B: Source Distribution (Fallback)
 
-If PyInstaller is blocked, use the source distribution:
+If PyInstaller is blocked by policy, use the source distribution:
 
 **Requirements:** Python 3.10+ installed
 
@@ -332,7 +377,7 @@ If PyInstaller is blocked, use the source distribution:
 **Colleague instructions:**
 1. Extract ZIP anywhere
 2. Double-click `run.bat`
-3. First run installs dependencies automatically
+3. First run installs dependencies automatically (~1-2 minutes)
 
 ### SmartScreen Warning
 
@@ -341,7 +386,21 @@ The standalone executable is not code-signed, so Windows will show:
 
 **For users:** Click "More info" → "Run anyway"
 
-**For IT:** See `IT_ADMIN_NOTES.txt` for code signing recommendations.
+**For IT:** See `IT_ADMIN_NOTES.txt` for:
+- Code signing instructions
+- Group Policy options
+- Antivirus whitelisting
+
+### Integrity Verification
+
+Each release includes SHA256 hashes:
+
+```powershell
+# Verify ZIP integrity
+Get-FileHash -Algorithm SHA256 PDFConsolidator_v1.1.0_Windows.zip
+
+# Compare with PDFConsolidator_v1.1.0_Windows.zip.sha256
+```
 
 ### Build Scripts Reference
 
@@ -349,9 +408,19 @@ The standalone executable is not code-signed, so Windows will show:
 |--------|---------|
 | `release/build_windows.ps1` | Build standalone exe |
 | `release/build_windows.bat` | Wrapper for double-click |
-| `release/package_zip.ps1` | Create distribution ZIP |
+| `release/package_zip.ps1` | Create publish-ready release |
 | `release/package_zip.bat` | Wrapper for double-click |
 | `release/fallback/run.bat` | Source distribution launcher |
+
+### Release Artifacts
+
+| File | Purpose |
+|------|---------|
+| `*.zip` | Distribution package |
+| `*.sha256` | Integrity verification |
+| `manifest.json` | Build metadata (version, hashes, dependencies) |
+| `RELEASE_NOTES.txt` | Human-readable release info |
+| `ROLLOUT_CHECKLIST.txt` | Pre-distribution checklist |
 
 ### Versioning
 

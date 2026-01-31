@@ -1,0 +1,63 @@
+PDF Consolidator v{VERSION}
+Release Date: {DATE} {TIME}
+========================================
+
+WHAT'S INCLUDED
+---------------
+- PDFConsolidator.exe (standalone, no Python required)
+- All Qt and Python dependencies bundled
+- README.txt - Quick start guide
+- SECURITY_NOTES.txt - Privacy and security information
+- IT_ADMIN_NOTES.txt - Deployment guidance for administrators
+
+FEATURES
+--------
+- Drag & drop PDF files to merge
+- Reorder files before merging
+- Multiple sort modes (filename, date, manual)
+- Encrypted PDF handling (skip, prompt, or single password)
+- Support bundle export for troubleshooting
+- Sanitized logging (no usernames in logs)
+- 100% offline - no network calls, no telemetry
+
+INTEGRITY VERIFICATION
+----------------------
+SHA256 (ZIP): {SHA256_ZIP}
+SHA256 (EXE): {SHA256_EXE}
+
+To verify on Windows PowerShell:
+  Get-FileHash -Algorithm SHA256 {ZIP_FILENAME}
+
+KNOWN LIMITATIONS
+-----------------
+- Not code-signed: Windows SmartScreen will show a warning on first run
+  Click "More info" > "Run anyway" to proceed
+- For organization-wide deployment, code signing is recommended
+
+GETTING STARTED
+---------------
+1. Extract the ZIP to any local folder (not a network path)
+2. Double-click PDFConsolidator.exe
+3. Drag PDF files onto the window
+4. Click "Merge PDFs"
+
+STORAGE LOCATIONS
+-----------------
+Settings: %APPDATA%\PDFConsolidator\settings.json
+Logs:     %APPDATA%\PDFConsolidator\app.log
+
+SUPPORT
+-------
+If you encounter issues:
+1. In the app, click Help > About / Support
+2. Click "Export Support Bundle"
+3. Share the generated ZIP file with your IT team
+
+The support bundle contains sanitized logs and settings only.
+No PDF files or passwords are ever included.
+
+BUILD INFORMATION
+-----------------
+- Built with Python {PYTHON_VERSION}
+- PyInstaller {PYINSTALLER_VERSION}
+- Platform: Windows x64
